@@ -1,0 +1,24 @@
+{
+  "name": "dockprox",
+  "version": "1.0.0",
+  "description": "HTTP/HTTPS proxy driven by Docker labels",
+  "main": "src/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/burgrp/dockprox.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/burgrp/dockprox/issues"
+  },
+  "homepage": "https://github.com/burgrp/dockprox#readme",
+  "dependencies": {
+    "@device.farm/appglue": "^1.0.13",
+    "http-proxy": "^1.17.0",
+    "node-docker-api": "^1.1.22"
+  }
+}

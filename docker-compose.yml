@@ -1,0 +1,37 @@
+version: "2"
+services:
+
+  n1:
+    hostname: n1
+    image: nginxdemos/hello
+    restart: always
+    ports:
+      - 80
+  n2:
+    hostname: n2
+    image: nginxdemos/hello
+    restart: always
+    ports:
+      - 80
+    labels:
+      cz.drake.dockprox.host: n22
+  n3:
+    hostname: n3
+    image: nginxdemos/hello
+    restart: always
+    ports:
+      - 80
+    labels:
+      cz.drake.dockprox.host: n33.johoho.cz
+  n4:
+    hostname: n4
+    image: nginxdemos/hello
+    restart: always
+    ports:
+      - 80
+    labels:
+      cz.drake.dockprox.port: "80"
+
+networks:
+  default:
+    driver: bridge
