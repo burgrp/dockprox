@@ -2,13 +2,14 @@ version: "2"
 services:
 
   n1:
-    hostname: n1
+    container_name: n1
     image: nginxdemos/hello
     restart: always
     ports:
       - 80
   n2:
     hostname: n2
+    domainname: device.farm
     image: nginxdemos/hello
     restart: always
     ports:
@@ -24,7 +25,6 @@ services:
     labels:
       cz.drake.dockprox.host: n33.johoho.cz
   n4:
-    hostname: n4
     image: nginxdemos/hello
     restart: always
     ports:
