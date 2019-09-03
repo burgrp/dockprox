@@ -2,35 +2,40 @@ version: "2"
 services:
 
   n1:
-    container_name: n1
     image: nginxdemos/hello
     restart: always
     ports:
       - 80
+    labels:
+      cz.drake.proxy: "*.zzz.com,80,/app"
   n2:
-    hostname: n2
-    domainname: device.farm
     image: nginxdemos/hello
     restart: always
     ports:
       - 80
     labels:
-      cz.drake.dockprox.host: n22
+      cz.drake.proxy: "*,80"
   n3:
-    hostname: n3
     image: nginxdemos/hello
     restart: always
     ports:
       - 80
     labels:
-      cz.drake.dockprox.host: n33.johoho.cz
+      cz.drake.proxy: "n3"
   n4:
     image: nginxdemos/hello
     restart: always
     ports:
       - 80
     labels:
-      cz.drake.dockprox.port: "80"
+      cz.drake.proxy: "www.zzz.com"
+  def:
+    image: nginxdemos/hello
+    restart: always
+    ports:
+      - 80
+    labels:
+      cz.drake.proxy: "*."
 
 networks:
   default:

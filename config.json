@@ -1,5 +1,10 @@
 {
-    "module": "./docker.js",
-    "socket": "-> $.DOCKER_SOCKET || '/var/run/docker.sock'",
-    "domain": "-> $DOMAIN"
+    "module": "./proxy.js",
+    "httpPort": "-> $.HTTP_PORT || 80",
+    "mapper": {
+        "module": "./docker.js",
+        "socket": "-> $.DOCKER_SOCKET || '/var/run/docker.sock'",
+        "domain": "-> $DOMAIN",
+        "remapToLocalhost": "-> $.REMAP_TO_LOCALHOST"
+    }
 }
