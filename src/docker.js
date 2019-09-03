@@ -42,21 +42,21 @@ module.exports = async config => {
                     port = "80";
                 }
 
-                port = parseInt(c.data.NetworkSettings.Ports[`${port}/tcp`][0].HostPort);
+                port = parseInt(port);
 
                 return {
                     front: {
                         host: vhost
                     },
                     back: {
-                        host: config.remapToLocalhost? "localhost": container,
+                        host: config.remapToLocalhost? "localhost": Object.values(c.data.NetworkSettings.Networks)[0].IPAddress,
                         port,
                         path
                     }
                 }
 
             }
-        }).filter(m => m);
+        }).filter(m => m).sort((a, b) => a.front.host.localeCompare(b.front.host));
     }
 
     let mapping = await createMapping();
@@ -91,7 +91,7 @@ module.exports = async config => {
 
     return {
         getMapping() {
-            return mapping;
+            return [...mapping];
         },
         onChange(listener) {
             listeners.push(listener);

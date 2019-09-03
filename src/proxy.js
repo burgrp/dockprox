@@ -9,11 +9,7 @@ module.exports = async config => {
     let mapping = sortMapping(await config.mapper.getMapping());
 
     let proxy = httpProxy.createProxyServer({
-
-    });
-
-    proxy.on("error", function (e) {
-
+        prependPath: false
     });
 
     function handleError(err, req, res) {
