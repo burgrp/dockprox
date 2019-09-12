@@ -1,5 +1,5 @@
-const http = require("http");
 const httpProxy = require("http-proxy");
+const fsPro = require("fs").promises;
 
 module.exports = async config => {
 
@@ -14,12 +14,14 @@ module.exports = async config => {
 
     function handleError(err, req, res) {
         res.writeHead(err.httpCode || 502, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({error:{
-            message: err.message || err
-        }}, null, 2));
+        res.end(JSON.stringify({
+            error: {
+                message: err.message || err
+            }
+        }, null, 2));
     }
 
-    var server = http.createServer(function (req, res) {
+    function handleRequest(req, res) {
         try {
             let rh = req.headers.host.split(":")[0];
 
@@ -34,7 +36,7 @@ module.exports = async config => {
                 throw new Error(`No configuration for virtual host ${rh}`);
             }
 
-            let targetUrl = `http://${target.back.host}:${target.back.port}${target.back.path.endsWith("/")?target.back.path.substring(0, target.back.path.length - 1):target.back.path}${req.url}`;
+            let targetUrl = `http://${target.back.host}:${target.back.port}${target.back.path.endsWith("/") ? target.back.path.substring(0, target.back.path.length - 1) : target.back.path}${req.url}`;
 
             console.info(`${req.method} http(s)://${req.headers.host}${req.url} -> ${targetUrl}`);
 
@@ -47,7 +49,7 @@ module.exports = async config => {
         } catch (e) {
             handleError(e, req, res);
         }
-    });
+    }
 
     function logMapping() {
         console.info("Mapping:");
@@ -56,9 +58,22 @@ module.exports = async config => {
 
     logMapping();
 
+    async function startServer(protocol) {
+        let pc = config[protocol];
+        if (pc.enabled === true || pc.enabled === "true") {
+            var server = require(protocol).createServer({
+                key: pc.key? await fsPro.readFile(pc.key): undefined,
+                cert: pc.key? await fsPro.readFile(pc.cert): undefined,
+            }, handleRequest);
+            server.listen(pc.port).on("listening", () => console.info(`${protocol.toUpperCase()} server listening on port ${pc.port}`));
+        }
+    }
+
     return {
         async start() {
-            server.listen(config.httpPort);
+
+            await startServer("http");
+            await startServer("https");
 
             config.mapper.onChange(m => {
                 mapping = sortMapping(m);

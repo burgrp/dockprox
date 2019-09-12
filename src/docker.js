@@ -91,7 +91,7 @@ module.exports = async config => {
 
     return {
         getMapping() {
-            return [...mapping];
+            return mapping;
         },
         onChange(listener) {
             listeners.push(listener);

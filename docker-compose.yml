@@ -4,36 +4,26 @@ services:
   n1:
     image: nginxdemos/hello
     restart: always
-    ports:
-      - 80
     labels:
-      cz.drake.proxy: "*.zzz.com,80,/app"
+      cz.drake.proxy: "*.zzz.com,80,/tmp"
   n2:
     image: nginxdemos/hello
     restart: always
-    ports:
-      - 80
     labels:
       cz.drake.proxy: "*,80"
   n3:
     image: nginxdemos/hello
     restart: always
-    ports:
-      - 80
     labels:
       cz.drake.proxy: "n3"
   n4:
     image: nginxdemos/hello
     restart: always
-    ports:
-      - 80
     labels:
       cz.drake.proxy: "www.zzz.com"
   def:
     image: nginxdemos/hello
     restart: always
-    ports:
-      - 80
     labels:
       cz.drake.proxy: "*."
 
