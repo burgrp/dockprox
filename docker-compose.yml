@@ -5,27 +5,31 @@ services:
     image: nginxdemos/hello
     restart: always
     labels:
-      cz.drake.proxy: "*.zzz.com,80,/tmp"
+      cz.drake.proxy.domain: "*.zzz.com"
+      cz.drake.proxy.port: "80"
+      cz.drake.proxy.path: "/tmp"
   n2:
     image: nginxdemos/hello
     restart: always
     labels:
-      cz.drake.proxy: "*,80"
+      cz.drake.proxy.domain: "*"
+      cz.drake.proxy.port: "80"
+      cz.drake.proxy.secure: "false"
   n3:
     image: nginxdemos/hello
     restart: always
     labels:
-      cz.drake.proxy: "n3"
+      cz.drake.proxy: "true"
   n4:
     image: nginxdemos/hello
     restart: always
     labels:
-      cz.drake.proxy: "www.zzz.com"
+      cz.drake.proxy.domain: "www.zzz.com"
   def:
     image: nginxdemos/hello
     restart: always
     labels:
-      cz.drake.proxy: "*."
+      cz.drake.proxy.domain: "*."
 
 networks:
   default:

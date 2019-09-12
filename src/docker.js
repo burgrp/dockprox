@@ -11,19 +11,21 @@ module.exports = async config => {
 
         return containers.map(c => {
 
-            let proxyParams = c.data.Config.Labels["cz.drake.proxy"];
+            let labels = c.data.Config.Labels;
 
-            if (proxyParams) {
+            if (Object.keys(labels).some(k => k.startsWith("cz.drake.proxy.") || k === "cz.drake.proxy")) {
 
-                let [vhost, port, path] = (proxyParams === "true" ? [] : proxyParams.split(","));
+                let vhost = labels["cz.drake.proxy.domain"];
 
-                let container = c.data.Name;
-                if (container.startsWith("/")) {
-                    container = container.substring(1);
+                if (!vhost) {
+                    vhost = c.data.Config.Labels["com.docker.compose.service"];;
                 }
 
                 if (!vhost) {
-                    vhost = c.data.Config.Labels["com.docker.compose.service"] || container;
+                    vhost = c.data.Name;
+                    if (vhost.startsWith("/")) {
+                        vhost = vhost.substring(1);
+                    }
                 }
 
                 if (vhost.indexOf(".") === -1) {
@@ -34,25 +36,22 @@ module.exports = async config => {
                     vhost = "*";
                 }
 
-                if (!path) {
-                    path = "/";
-                }
+                let port = parseInt(labels["cz.drake.proxy.port"] || "80");
 
-                if (!port) {
-                    port = "80";
-                }
+                let path = labels["cz.drake.proxy.path"] || "/";
 
-                port = parseInt(port);
+                let secure = !(labels["cz.drake.proxy.secure"] === "false")
 
                 return {
                     front: {
                         host: vhost
                     },
                     back: {
-                        host: config.remapToLocalhost? "localhost": Object.values(c.data.NetworkSettings.Networks)[0].IPAddress,
+                        host: config.remapToLocalhost ? "localhost" : Object.values(c.data.NetworkSettings.Networks)[0].IPAddress,
                         port,
                         path
-                    }
+                    },
+                    secure
                 }
 
             }
@@ -75,7 +74,7 @@ module.exports = async config => {
         }
         eventDelay = setTimeout(async () => {
             eventDelay = undefined;
-            
+
             try {
                 let newMapping = await createMapping();
                 if (!deepEqual(newMapping, mapping)) {
