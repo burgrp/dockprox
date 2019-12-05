@@ -24,7 +24,13 @@ services:
     image: nginxdemos/hello
     restart: always
     labels:
-      cz.drake.proxy.domain: "www.zzz.com"
+      cz.drake.proxy.domain: "www.zzz.com, ^zzz.com"
+  ws:
+    image: ksdn117/web-socket-test
+    restart: always
+    labels: 
+      cz.drake.proxy.domain: "ws.drake.cz"
+      cz.drake.proxy.port: "8010"
   def:
     image: nginxdemos/hello
     restart: always

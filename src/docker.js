@@ -9,53 +9,62 @@ module.exports = async config => {
     async function createMapping() {
         let containers = await Promise.all((await docker.container.list()).map(c => c.status()));
 
-        return containers.map(c => {
+        let mapping = [];
+
+        for (let c of containers) {
 
             let labels = c.data.Config.Labels;
 
             if (Object.keys(labels).some(k => k.startsWith("cz.drake.proxy.") || k === "cz.drake.proxy")) {
 
-                let vhost = labels["cz.drake.proxy.domain"];
+                let vhosts = (labels["cz.drake.proxy.domain"] || "").split(",").map(s => s.trim());
 
-                if (!vhost) {
-                    vhost = c.data.Config.Labels["com.docker.compose.service"];;
-                }
+                for (let vhost of vhosts) {
 
-                if (!vhost) {
-                    vhost = c.data.Name;
-                    if (vhost.startsWith("/")) {
-                        vhost = vhost.substring(1);
+                    if (!vhost) {
+                        vhost = c.data.Config.Labels["com.docker.compose.service"];;
                     }
-                }
 
-                if (vhost.indexOf(".") === -1) {
-                    vhost = vhost + "." + (c.data.Config.Domainname || domain);
-                }
+                    if (!vhost) {
+                        vhost = c.data.Name;
+                        if (vhost.startsWith("/")) {
+                            vhost = vhost.substring(1);
+                        }
+                    }
 
-                if (vhost === "*.") {
-                    vhost = "*";
-                }
+                    if (vhost.indexOf(".") === -1) {
+                        vhost = vhost + "." + (c.data.Config.Domainname || domain);
+                    }
 
-                let port = parseInt(labels["cz.drake.proxy.port"] || "80");
+                    if (vhost === "*.") {
+                        vhost = "*";
+                    }
 
-                let path = labels["cz.drake.proxy.path"] || "/";
+                    let port = parseInt(labels["cz.drake.proxy.port"] || "80");
 
-                let secure = !(labels["cz.drake.proxy.secure"] === "false")
+                    let path = labels["cz.drake.proxy.path"] || "/";
 
-                return {
-                    front: {
-                        host: vhost
-                    },
-                    back: {
-                        host: config.remapToLocalhost ? "localhost" : Object.values(c.data.NetworkSettings.Networks)[0].IPAddress,
-                        port,
-                        path
-                    },
-                    secure
+                    let secure = !(labels["cz.drake.proxy.secure"] === "false")
+
+                    mapping.push({
+                        front: {
+                            host: vhost
+                        },
+                        back: {
+                            host: config.remapToLocalhost ? "localhost" : Object.values(c.data.NetworkSettings.Networks)[0].IPAddress,
+                            port,
+                            path
+                        },
+                        secure
+                    });
+
                 }
 
             }
-        }).filter(m => m).sort((a, b) => a.front.host.localeCompare(b.front.host));
+        }
+
+        // sort to allow deep equal check below
+        return mapping.sort((a, b) => a.front.host.localeCompare(b.front.host));
     }
 
     let mapping = await createMapping();

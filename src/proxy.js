@@ -4,7 +4,17 @@ const fsPro = require("fs").promises;
 module.exports = async config => {
 
     let reverseStr = s => s.split("").reverse().join("");
-    let sortMapping = m => m.sort((a, b) => reverseStr(b.front.host).localeCompare(reverseStr(a.front.host)));
+    let sortMapping = m => m
+        .sort((a, b) => reverseStr(b.front.host).localeCompare(reverseStr(a.front.host)))
+        .map(m => {
+            // use ^ prefix to prioritize naked domains over wildcards e.g.
+            // *.foo.bar will take preference over foo.bar, but
+            // ^foo.bar takes preference over *.foo.bar
+            if (m.front.host.startsWith("^")) {
+                m.front.host = m.front.host.substring(1);
+            }
+            return m;
+        });
 
     let mapping = sortMapping(await config.mapper.getMapping());
 
@@ -26,6 +36,27 @@ module.exports = async config => {
         mapping.forEach(m => console.info(`${m.front.host} -> ${m.back.host}:${m.back.port}${m.back.path}`));
     }
 
+    function getTarget(req) {
+        let requestedHost = req.headers.host.split(":")[0];
+
+        let target = mapping.find(m => {
+            let mh = m.front.host;
+            if (mh === requestedHost || (mh.startsWith("*") && requestedHost.endsWith(mh.substring(1)))) {
+                return true;
+            }
+        });
+
+        if (!target) {
+            throw new Error(`No configuration for virtual host ${requestedHost}`);
+        }
+
+        return { requestedHost, target };
+    }
+
+    function getTargetUrl(req, target) {
+        return `http://${target.back.host}:${target.back.port}${target.back.path.endsWith("/") ? target.back.path.substring(0, target.back.path.length - 1) : target.back.path}${req.url}`
+    }
+
     logMapping();
 
     let redirectMap = {};
@@ -43,21 +74,11 @@ module.exports = async config => {
                 cert: pc.key ? await fsPro.readFile(pc.cert) : undefined,
             }, (req, res) => {
                 try {
-                    let requestedHost = req.headers.host.split(":")[0];
 
-                    let target = mapping.find(m => {
-                        let mh = m.front.host;
-                        if (mh === requestedHost || (mh.startsWith("*") && requestedHost.endsWith(mh.substring(1)))) {
-                            return true;
-                        }
-                    });
-
-                    if (!target) {
-                        throw new Error(`No configuration for virtual host ${requestedHost}`);
-                    }
+                    let { requestedHost, target } = getTarget(req);
 
                     if ((target.secure != secure) && redirectMap[redirectProtocol]) {
-                        
+
                         let redirectUrl = `${redirectProtocol}://${requestedHost}:${redirectMap[redirectProtocol]}${req.url}`;
 
                         console.info(`${req.method} ${protocol}://${req.headers.host}${req.url} >> ${redirectUrl}`);
@@ -69,8 +90,8 @@ module.exports = async config => {
 
                     } else {
 
-                        let targetUrl = `http://${target.back.host}:${target.back.port}${target.back.path.endsWith("/") ? target.back.path.substring(0, target.back.path.length - 1) : target.back.path}${req.url}`;
-
+                        let targetUrl = getTargetUrl(req, target);
+                        
                         console.info(`${req.method} ${protocol}://${req.headers.host}${req.url} -> ${targetUrl}`);
 
                         proxy.web(req, res, {
@@ -86,6 +107,22 @@ module.exports = async config => {
                 }
             });
 
+            server.on("upgrade", (req, socket, head) => {
+                try {
+
+                    let { target } = getTarget(req);
+                    let targetUrl = getTargetUrl(req, target);
+
+                    proxy.ws(req, socket, head, {
+                        target: targetUrl
+                    });
+
+                } catch (e) {
+                    console.error("Error proxying websocket", e);
+                    socket.destroy();
+                }
+            });
+
             server.listen(pc.port).on("listening", () => console.info(`${protocol.toUpperCase()} server listening on port ${pc.port}`));
         }
     }
@@ -96,8 +133,8 @@ module.exports = async config => {
             await startServer("http", false, "https");
             await startServer("https", true, "http");
 
-            config.mapper.onChange(m => {
-                mapping = sortMapping(m);
+            config.mapper.onChange(newMapping => {
+                mapping = sortMapping(newMapping);
                 logMapping();
             });
         }
