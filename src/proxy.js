@@ -1,5 +1,5 @@
-const httpProxy = require("http-proxy");
 const fsPro = require("fs").promises;
+const http = require("http");
 
 module.exports = async config => {
 
@@ -17,10 +17,6 @@ module.exports = async config => {
         });
 
     let mapping = sortMapping(await config.mapper.getMapping());
-
-    let proxy = httpProxy.createProxyServer({
-        prependPath: false
-    });
 
     function handleError(err, req, res) {
         res.writeHead(err.httpCode || 502, { 'Content-Type': 'application/json' });
@@ -91,14 +87,18 @@ module.exports = async config => {
                     } else {
 
                         let targetUrl = getTargetUrl(req, target);
-                        
+
                         console.info(`${req.method} ${protocol}://${req.headers.host}${req.url} -> ${targetUrl}`);
 
-                        proxy.web(req, res, {
-                            target: targetUrl
-                        }, e => {
-                            handleError(e, req, res);
+                        let targetReq = http.request(targetUrl, {
+                            method: req.method,
+                            headers: req.headers,
+                        }, targetRes => {
+                            res.writeHead(targetRes.statusCode, targetRes.statusMessage, targetRes.headers);
+                            targetRes.pipe(res);
                         });
+
+                        req.pipe(targetReq);
 
                     }
 
@@ -107,21 +107,44 @@ module.exports = async config => {
                 }
             });
 
-            server.on("upgrade", (req, socket, head) => {
+            server.on("upgrade", async (req, socket, head) => {
                 try {
 
                     let { target } = getTarget(req);
                     let targetUrl = getTargetUrl(req, target);
 
-                    proxy.ws(req, socket, head, {
-                        target: targetUrl
+                    let targetReq = http.request(targetUrl, {
+                        method: req.method,
+                        headers: req.headers,
                     });
 
+                    targetReq.on("upgrade", (targetRes, targetSocket, upgradeHead) => {
+                        socket.write(
+                            `HTTP/${targetRes.httpVersion} ${targetRes.statusCode} ${targetRes.statusMessage}\n` +
+                            Object.entries(targetRes.headers).map(([k, v]) => `${k}: ${v}\n`).join("") +
+                            "\n"
+                        );
+                        //TODO: is it correct to write upgradeHead here?
+                        socket.write(upgradeHead);
+                        socket.pipe(targetSocket).pipe(socket);
+
+                        socket.on("error", e => {
+                            if (e.code !== "ECONNRESET") {
+                                console.error("Socket error: ", e);
+                            }
+                            targetSocket.end();
+                        });
+                    });
+
+                    targetReq.end(head);
+
                 } catch (e) {
-                    console.error("Error proxying websocket", e);
+                    console.error("Error proxying upgrade request", e);
+                    //TODO: return valid HTTP response 
                     socket.destroy();
                 }
             });
+
 
             server.listen(pc.port).on("listening", () => console.info(`${protocol.toUpperCase()} server listening on port ${pc.port}`));
         }

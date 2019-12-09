@@ -7,4 +7,4 @@ RUN npm install
 
 EXPOSE 80/tcp
 
-CMD node src/main.js
+CMD node --inspect=0.0.0.0:9229 src/main.js
