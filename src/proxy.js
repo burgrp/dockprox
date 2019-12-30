@@ -71,6 +71,8 @@ module.exports = async config => {
             }, (req, res) => {
                 try {
 
+                    res.setTimeout(0);
+
                     let { requestedHost, target } = getTarget(req);
 
                     if ((target.secure != secure) && redirectMap[redirectProtocol]) {
@@ -96,8 +98,12 @@ module.exports = async config => {
                             headers: req.headers,
                         }, targetRes => {
                             res.writeHead(targetRes.statusCode, targetRes.statusMessage, targetRes.headers);
-                            // flush the head
-                            res.write("\n");
+                            
+                            // ugly hack: flush the head in case of docker wait call
+                            if (req.url.endsWith("/wait?condition=removed")) {
+                                res.write("\n");
+                            }
+                            
                             targetRes.pipe(res);
                         });
 
