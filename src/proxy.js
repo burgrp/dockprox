@@ -1,6 +1,6 @@
 const fsPro = require("fs").promises;
 const http = require("http");
-
+//force rebuild
 module.exports = async config => {
 
     let reverseStr = s => s.split("").reverse().join("");
@@ -91,15 +91,21 @@ module.exports = async config => {
                         console.info(`${req.method} ${protocol}://${req.headers.host}${req.url} -> ${targetUrl}`);
 
                         let targetReq = http.request(targetUrl, {
+                            agent: new http.Agent(), // avoid dead locks by request queueing 
                             method: req.method,
                             headers: req.headers,
                         }, targetRes => {
                             res.writeHead(targetRes.statusCode, targetRes.statusMessage, targetRes.headers);
+                            // flush the head
+                            res.write("\n");
                             targetRes.pipe(res);
                         });
 
+                        targetReq.on("error", e => {
+                            handleError(e, req, res);
+                        });
+            
                         req.pipe(targetReq);
-
                     }
 
                 } catch (e) {
@@ -113,19 +119,16 @@ module.exports = async config => {
                     let { target } = getTarget(req);
                     let targetUrl = getTargetUrl(req, target);
 
+                    console.info(`${req.method} ${protocol}://${req.headers.host}${req.url} -> ${targetUrl}`);
+
                     let targetReq = http.request(targetUrl, {
+                        agent: new http.Agent(), // avoid dead locks by request queueing 
                         method: req.method,
                         headers: req.headers,
                     });
 
                     targetReq.on("upgrade", (targetRes, targetSocket, upgradeHead) => {
-                        socket.write(
-                            `HTTP/${targetRes.httpVersion} ${targetRes.statusCode} ${targetRes.statusMessage}\n` +
-                            Object.entries(targetRes.headers).map(([k, v]) => `${k}: ${v}\n`).join("") +
-                            "\n"
-                        );
-                        //TODO: is it correct to write upgradeHead here?
-                        socket.write(upgradeHead);
+                        socket.write(Buffer.from(upgradeHead.buffer));
                         socket.pipe(targetSocket).pipe(socket);
 
                         socket.on("error", e => {
