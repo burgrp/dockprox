@@ -98,19 +98,19 @@ module.exports = async config => {
                             headers: req.headers,
                         }, targetRes => {
                             res.writeHead(targetRes.statusCode, targetRes.statusMessage, targetRes.headers);
-                            
+
                             // ugly hack: flush the head in case of docker wait call
                             if (req.url.endsWith("/wait?condition=removed")) {
                                 res.write("\n");
                             }
-                            
+
                             targetRes.pipe(res);
                         });
 
                         targetReq.on("error", e => {
                             handleError(e, req, res);
                         });
-            
+
                         req.pipe(targetReq);
                     }
 
@@ -134,7 +134,13 @@ module.exports = async config => {
                     });
 
                     targetReq.on("upgrade", (targetRes, targetSocket, upgradeHead) => {
-                        socket.write(Buffer.from(upgradeHead.buffer));
+                        
+                        socket.write(
+                            `HTTP/${targetRes.httpVersion} ${targetRes.statusCode} ${targetRes.statusMessage}\n` +
+                            Object.entries(targetRes.headers).map(([k, v]) => `${k}: ${v}\n`).join("") +
+                            "\n"
+                        );
+        
                         socket.pipe(targetSocket).pipe(socket);
 
                         socket.on("error", e => {
