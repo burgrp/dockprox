@@ -95,7 +95,7 @@ module.exports = async config => {
 
                         console.info(`${req.method} ${protocol}://${req.headers.host}${req.url} -> ${targetUrl}`);
 
-                        let clientCert = req.socket.getPeerCertificate() || {};
+                        let clientCert = (req.socket.getPeerCertificate && req.socket.getPeerCertificate()) || {};
 
                         let reqHeaders = [
                             ...Object.entries(req.headers).filter(([k, v]) => !k.startsWith("tcc-")),
