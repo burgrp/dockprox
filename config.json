@@ -1,6 +1,6 @@
 {
     "module": "./proxy.js",
-    "http":{
+    "http": {
         "enabled": "-> $.HTTP_ENABLED === undefined? true: $.HTTP_ENABLED",
         "port": "-> $.HTTP_PORT || 80"
     },
@@ -8,7 +8,10 @@
         "enabled": "-> $.HTTPS_ENABLED || false",
         "port": "-> $.HTTPS_PORT || 443",
         "key": "-> $.HTTPS_PRIVKEY || '/data/privkey.pem'",
-        "cert": "-> $.HTTPS_CERT || '/data/cert.pem'"
+        "cert": "-> $.HTTPS_CERT || '/data/cert.pem'",
+        "ca": "-> $.HTTPS_CA",
+        "requestCert": "-> $.HTTPS_REQUEST_CERT || false",
+        "rejectUnauthorized": "-> $.HTTPS_REJECT_UNAUTHORIZED || false"
     },
     "mapper": {
         "module": "./docker.js",

@@ -67,7 +67,10 @@ module.exports = async config => {
 
             var server = require(protocol).createServer({
                 key: pc.key ? await fsPro.readFile(pc.key) : undefined,
-                cert: pc.key ? await fsPro.readFile(pc.cert) : undefined,
+                cert: pc.cert ? await fsPro.readFile(pc.cert) : undefined,
+                ca: pc.ca ? await fsPro.readFile(pc.ca) : undefined,
+                requestCert: pc.requestCert,
+                rejectUnauthorized: pc.rejectUnauthorized
             }, (req, res) => {
                 try {
 
@@ -92,10 +95,22 @@ module.exports = async config => {
 
                         console.info(`${req.method} ${protocol}://${req.headers.host}${req.url} -> ${targetUrl}`);
 
+                        let clientCert = req.socket.getPeerCertificate() || {};
+
+                        let reqHeaders = [
+                            ...Object.entries(req.headers).filter(([k, v]) => !k.startsWith("tcc-")),
+                            ["tcc-fingerprint-sha1", clientCert.fingerprint],
+                            ["tcc-fingerprint-sha256", clientCert.fingerprint256],
+                            ["tcc-serial-number", clientCert.serialNumber],
+                            ["tcc-valid-from", clientCert.valid_from],
+                            ["tcc-valid-to", clientCert.valid_to],
+                            ...Object.entries(clientCert.subject || {}).reduce((acc, [k, v]) => ([...acc, ["tcc-subject-" + k.toLowerCase(), v]]), [])
+                        ].reduce((acc, [k, v]) => (v === undefined ? acc : { ...acc, [k]: v }), {});
+
                         let targetReq = http.request(targetUrl, {
                             agent: new http.Agent(), // avoid dead locks by request queueing 
                             method: req.method,
-                            headers: req.headers,
+                            headers: reqHeaders,
                         }, targetRes => {
                             res.writeHead(targetRes.statusCode, targetRes.statusMessage, targetRes.headers);
 
@@ -134,13 +149,13 @@ module.exports = async config => {
                     });
 
                     targetReq.on("upgrade", (targetRes, targetSocket, upgradeHead) => {
-                        
+
                         socket.write(
                             `HTTP/${targetRes.httpVersion} ${targetRes.statusCode} ${targetRes.statusMessage}\n` +
                             Object.entries(targetRes.headers).map(([k, v]) => `${k}: ${v}\n`).join("") +
                             "\n"
                         );
-        
+
                         socket.pipe(targetSocket).pipe(socket);
 
                         socket.on("error", e => {
