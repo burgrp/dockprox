@@ -150,6 +150,19 @@ module.exports = async config => {
 
                     targetReq.on("upgrade", (targetRes, targetSocket, upgradeHead) => {
 
+                        targetSocket.on("error", e => {
+                            if (e.code !== "ECONNRESET") {
+                                console.error("Socket error: ", e);
+                            }
+                        });
+
+                        socket.on("error", e => {
+                            if (e.code !== "ECONNRESET") {
+                                console.error("Socket error: ", e);
+                            }
+                            targetSocket.end();
+                        });
+
                         socket.write(
                             `HTTP/${targetRes.httpVersion} ${targetRes.statusCode} ${targetRes.statusMessage}\n` +
                             Object.entries(targetRes.headers).map(([k, v]) => `${k}: ${v}\n`).join("") +
@@ -158,12 +171,6 @@ module.exports = async config => {
 
                         socket.pipe(targetSocket).pipe(socket);
 
-                        socket.on("error", e => {
-                            if (e.code !== "ECONNRESET") {
-                                console.error("Socket error: ", e);
-                            }
-                            targetSocket.end();
-                        });
                     });
 
                     targetReq.end(head);
