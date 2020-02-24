@@ -2,7 +2,7 @@ const fsPro = require("fs").promises;
 const http = require("http");
 //force rebuild
 module.exports = async config => {
-
+    console.info("----------------------------------------------------------- 1");
     let reverseStr = s => s.split("").reverse().join("");
     let sortMapping = m => m
         .sort((a, b) => reverseStr(b.front.host).localeCompare(reverseStr(a.front.host)))
@@ -134,6 +134,12 @@ module.exports = async config => {
                 }
             });
 
+            server.on("clientError", e => {
+                if (e.code !== "ECONNRESET") {
+                    console.error("Client error: ", e);
+                }
+            });
+
             server.on("upgrade", async (req, socket, head) => {
                 try {
 
@@ -148,20 +154,13 @@ module.exports = async config => {
                         headers: req.headers,
                     });
 
+                    targetReq.on("error", e => {
+                        if (e.code !== "ECONNRESET") {
+                            console.error("Upgraded socket error: ", e);
+                        }
+                    });
+
                     targetReq.on("upgrade", (targetRes, targetSocket, upgradeHead) => {
-
-                        targetSocket.on("error", e => {
-                            if (e.code !== "ECONNRESET") {
-                                console.error("Socket error: ", e);
-                            }
-                        });
-
-                        socket.on("error", e => {
-                            if (e.code !== "ECONNRESET") {
-                                console.error("Socket error: ", e);
-                            }
-                            targetSocket.end();
-                        });
 
                         socket.write(
                             `HTTP/${targetRes.httpVersion} ${targetRes.statusCode} ${targetRes.statusMessage}\n` +
