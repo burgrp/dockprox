@@ -1,8 +1,9 @@
 const fsPro = require("fs").promises;
 const http = require("http");
-//force rebuild
+const tls = require("tls");
+
 module.exports = async config => {
-    console.info("----------------------------------------------------------- 1");
+
     let reverseStr = s => s.split("").reverse().join("");
     let sortMapping = m => m
         .sort((a, b) => reverseStr(b.front.host).localeCompare(reverseStr(a.front.host)))
@@ -16,7 +17,7 @@ module.exports = async config => {
             return m;
         });
 
-    let mapping = sortMapping(await config.mapper.getMapping());
+    let virtualHostMapping = sortMapping(await config.mapper.getMapping());
 
     function handleError(err, req, res) {
         res.writeHead(err.httpCode || 502, { 'Content-Type': 'application/json' });
@@ -28,14 +29,14 @@ module.exports = async config => {
     }
 
     function logMapping() {
-        console.info("Mapping:");
-        mapping.forEach(m => console.info(`${m.front.host} -> ${m.back.host}:${m.back.port}${m.back.path}`));
+        console.info("Virtual host mapping:");
+        virtualHostMapping.forEach(m => console.info(`  ${m.front.host} -> ${m.back.host}:${m.back.port}${m.back.path}`));
     }
 
     function getTarget(req) {
         let requestedHost = req.headers.host.split(":")[0];
 
-        let target = mapping.find(m => {
+        let target = virtualHostMapping.find(m => {
             let mh = m.front.host;
             if (mh === requestedHost || (mh.startsWith("*") && requestedHost.endsWith(mh.substring(1)))) {
                 return true;
@@ -61,16 +62,54 @@ module.exports = async config => {
 
         let pc = config[protocol];
 
+        function checkRequestHeaders(req) {
+            let clientCert = (req.socket.getPeerCertificate && req.socket.getPeerCertificate()) || {};
+
+            let result = [
+                ...Object.entries(req.headers).filter(([k, v]) => !k.startsWith("tcc-")),
+                ["tcc-fingerprint-sha1", clientCert.fingerprint],
+                ["tcc-fingerprint-sha256", clientCert.fingerprint256],
+                ["tcc-serial-number", clientCert.serialNumber],
+                ["tcc-valid-from", clientCert.valid_from],
+                ["tcc-valid-to", clientCert.valid_to],
+                ...Object.entries(clientCert.subject || {}).reduce((acc, [k, v]) => ([...acc, ["tcc-subject-" + k.toLowerCase(), v]]), [])
+            ].reduce((acc, [k, v]) => (v === undefined ? acc : { ...acc, [k]: v }), {});
+
+            return result;
+        }
+
         if (pc.enabled === true || pc.enabled === "true") {
 
             redirectMap[protocol] = pc.port;
 
+            let contextMapping = pc.ctxMapping ?
+                JSON.parse(await fsPro.readFile(pc.ctxMapping))
+                    .map(x => x)
+                : [];
+
+            for (let cm of contextMapping) {
+                for (let key of ["key", "cert", "ca"]) {
+                    cm[key] = cm[key] && await fsPro.readFile(cm[key]);
+                }
+            }
+
             var server = require(protocol).createServer({
-                key: pc.key ? await fsPro.readFile(pc.key) : undefined,
-                cert: pc.cert ? await fsPro.readFile(pc.cert) : undefined,
-                ca: pc.ca ? await fsPro.readFile(pc.ca) : undefined,
-                requestCert: pc.requestCert,
-                rejectUnauthorized: pc.rejectUnauthorized
+                SNICallback: (servername, cb) => {
+
+                    let servernameMatches = what => what && (servername === what || (what.startsWith("*") && servername.endsWith(what.substring(1))));
+
+                    let options = {
+                        ...contextMapping.find(m =>
+                            (!m.host && !m.hosts) ||
+                            servernameMatches(m.host) ||
+                            m.hosts.some(servernameMatches)
+                        ) || {},
+                        host: undefined,
+                        hosts: undefined
+                    }
+                    let ctx = tls.createSecureContext(options);
+                    cb(null, ctx);
+                }
             }, (req, res) => {
                 try {
 
@@ -95,22 +134,10 @@ module.exports = async config => {
 
                         console.info(`${req.method} ${protocol}://${req.headers.host}${req.url} -> ${targetUrl}`);
 
-                        let clientCert = (req.socket.getPeerCertificate && req.socket.getPeerCertificate()) || {};
-
-                        let reqHeaders = [
-                            ...Object.entries(req.headers).filter(([k, v]) => !k.startsWith("tcc-")),
-                            ["tcc-fingerprint-sha1", clientCert.fingerprint],
-                            ["tcc-fingerprint-sha256", clientCert.fingerprint256],
-                            ["tcc-serial-number", clientCert.serialNumber],
-                            ["tcc-valid-from", clientCert.valid_from],
-                            ["tcc-valid-to", clientCert.valid_to],
-                            ...Object.entries(clientCert.subject || {}).reduce((acc, [k, v]) => ([...acc, ["tcc-subject-" + k.toLowerCase(), v]]), [])
-                        ].reduce((acc, [k, v]) => (v === undefined ? acc : { ...acc, [k]: v }), {});
-
                         let targetReq = http.request(targetUrl, {
                             agent: new http.Agent(), // avoid dead locks by request queueing 
                             method: req.method,
-                            headers: reqHeaders,
+                            headers: checkRequestHeaders(req),
                         }, targetRes => {
                             res.writeHead(targetRes.statusCode, targetRes.statusMessage, targetRes.headers);
 
@@ -151,7 +178,7 @@ module.exports = async config => {
                     let targetReq = http.request(targetUrl, {
                         agent: new http.Agent(), // avoid dead locks by request queueing 
                         method: req.method,
-                        headers: req.headers,
+                        headers: checkRequestHeaders(req),
                     });
 
                     targetReq.on("error", e => {
@@ -193,7 +220,7 @@ module.exports = async config => {
             await startServer("https", true, "http");
 
             config.mapper.onChange(newMapping => {
-                mapping = sortMapping(newMapping);
+                virtualHostMapping = sortMapping(newMapping);
                 logMapping();
             });
         }

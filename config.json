@@ -11,7 +11,8 @@
         "cert": "-> $.HTTPS_CERT || '/data/cert.pem'",
         "ca": "-> $.HTTPS_CA",
         "requestCert": "-> $.HTTPS_REQUEST_CERT || false",
-        "rejectUnauthorized": "-> $.HTTPS_REJECT_UNAUTHORIZED || false"
+        "rejectUnauthorized": "-> $.HTTPS_REJECT_UNAUTHORIZED || false",
+        "ctxMapping": "-> $.HTTPS_CTX_MAPPING"
     },
     "mapper": {
         "module": "./docker.js",
