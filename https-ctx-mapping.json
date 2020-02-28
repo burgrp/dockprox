@@ -4,16 +4,16 @@
         "key": "letsencrypt/live/drake.cz/privkey.pem",
         "cert": "letsencrypt/live/drake.cz/fullchain.pem",
         "ca": "/home/paul/df/dc-df/storage/ca/ca.pem",
-        "requestCert": "true",
-        "rejectUnauthorized": "true"
+        "requestCert": true,
+        "rejectUnauthorized": true
     },
     {
         "hosts": ["*.drake.cz"],
         "key": "letsencrypt/live/drake.cz/privkey.pem",
         "cert": "letsencrypt/live/drake.cz/fullchain.pem",
         "ca": "/home/paul/df/dc-df/storage/ca/ca.pem",
-        "requestCert": "true",
-        "rejectUnauthorized": "false"
+        "requestCert": true,
+        "rejectUnauthorized": false
     },
     {
         "key": "letsencrypt/live/drake.cz/privkey.pem",

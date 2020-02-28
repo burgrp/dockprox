@@ -7,12 +7,13 @@
     "https": {
         "enabled": "-> $.HTTPS_ENABLED || false",
         "port": "-> $.HTTPS_PORT || 443",
-        "key": "-> $.HTTPS_PRIVKEY || '/data/privkey.pem'",
-        "cert": "-> $.HTTPS_CERT || '/data/cert.pem'",
-        "ca": "-> $.HTTPS_CA",
-        "requestCert": "-> $.HTTPS_REQUEST_CERT || false",
-        "rejectUnauthorized": "-> $.HTTPS_REJECT_UNAUTHORIZED || false",
-        "ctxMapping": "-> $.HTTPS_CTX_MAPPING"
+        "options": {
+            "key": "-> $.HTTPS_KEY || '/data/privkey.pem'",
+            "cert": "-> $.HTTPS_CERT || '/data/cert.pem'",
+            "ca": "-> $.HTTPS_CA",
+            "requestCert": "-> $.HTTPS_REQUEST_CERT",
+            "rejectUnauthorized": "-> $.HTTPS_REJECT_UNAUTHORIZED"
+        }
     },
     "mapper": {
         "module": "./docker.js",

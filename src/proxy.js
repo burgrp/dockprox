@@ -82,35 +82,11 @@ module.exports = async config => {
 
             redirectMap[protocol] = pc.port;
 
-            let contextMapping = pc.ctxMapping ?
-                JSON.parse(await fsPro.readFile(pc.ctxMapping))
-                    .map(x => x)
-                : [];
-
-            for (let cm of contextMapping) {
-                for (let key of ["key", "cert", "ca"]) {
-                    cm[key] = cm[key] && await fsPro.readFile(cm[key]);
-                }
+            for (let key of ["key", "cert", "ca"]) {
+                pc.options[key] = pc.options[key] && await fsPro.readFile(pc.options[key]);
             }
 
-            var server = require(protocol).createServer({
-                SNICallback: (servername, cb) => {
-
-                    let servernameMatches = what => what && (servername === what || (what.startsWith("*") && servername.endsWith(what.substring(1))));
-
-                    let options = {
-                        ...contextMapping.find(m =>
-                            (!m.host && !m.hosts) ||
-                            servernameMatches(m.host) ||
-                            m.hosts.some(servernameMatches)
-                        ) || {},
-                        host: undefined,
-                        hosts: undefined
-                    }
-                    let ctx = tls.createSecureContext(options);
-                    cb(null, ctx);
-                }
-            }, (req, res) => {
+            var server = require(protocol).createServer(pc.options, (req, res) => {
                 try {
 
                     res.setTimeout(0);
