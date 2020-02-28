@@ -2,7 +2,8 @@
     "module": "./proxy.js",
     "http": {
         "enabled": "-> $.HTTP_ENABLED === undefined? true: $.HTTP_ENABLED",
-        "port": "-> $.HTTP_PORT || 80"
+        "port": "-> $.HTTP_PORT || 80",
+        "options": {}
     },
     "https": {
         "enabled": "-> $.HTTPS_ENABLED || false",
