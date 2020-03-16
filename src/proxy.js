@@ -137,10 +137,11 @@ module.exports = async config => {
                 }
             });
 
-            server.on("clientError", e => {
-                if (e.code !== "ECONNRESET") {
+            server.on("clientError", (e, socket) => {
+                //if (e.code !== "ECONNRESET") {
                     console.error("Client error: ", e);
-                }
+                //}
+                socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
             });
 
             server.on("upgrade", async (req, socket, head) => {
