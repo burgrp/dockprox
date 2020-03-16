@@ -138,14 +138,20 @@ module.exports = async config => {
             });
 
             server.on("clientError", (e, socket) => {
-                //if (e.code !== "ECONNRESET") {
+                if (e.code !== "ECONNRESET") {
                     console.error("Client error: ", e);
-                //}
+                }
                 socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
             });
 
             server.on("upgrade", async (req, socket, head) => {
                 try {
+
+                    socket.on("error", e => {
+                        if (e.code !== "EPIPE") {
+                            console.error("Upgraded socket error:", e);
+                        }
+                    });
 
                     let { target } = getTarget(req);
                     let targetUrl = getTargetUrl(req, target);
@@ -184,7 +190,6 @@ module.exports = async config => {
                     socket.destroy();
                 }
             });
-
 
             server.listen(pc.port).on("listening", () => console.info(`${protocol.toUpperCase()} server listening on port ${pc.port}`));
         }
