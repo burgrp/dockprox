@@ -5,38 +5,12 @@ services:
     image: nginxdemos/hello
     restart: always
     labels:
-      cz.drake.proxy.domain: "*.zzz.com"
+      cz.drake.proxy.domain: a.device.farm
       cz.drake.proxy.port: "80"
-      cz.drake.proxy.path: "/tmp"
+
   n2:
     image: nginxdemos/hello
     restart: always
     labels:
-      cz.drake.proxy.domain: "*"
+      cz.drake.proxy.domain: a.ovh1.device.farm
       cz.drake.proxy.port: "80"
-      cz.drake.proxy.secure: "false"
-  n3:
-    image: nginxdemos/hello
-    restart: always
-    labels:
-      cz.drake.proxy: "true"
-  n4:
-    image: nginxdemos/hello
-    restart: always
-    labels:
-      cz.drake.proxy.domain: "www.zzz.com, ^zzz.com"
-  ws:
-    image: ksdn117/web-socket-test
-    restart: always
-    labels: 
-      cz.drake.proxy.domain: "ws.drake.cz"
-      cz.drake.proxy.port: "8010"
-  def:
-    image: nginxdemos/hello
-    restart: always
-    labels:
-      cz.drake.proxy.domain: "*."
-
-networks:
-  default:
-    driver: bridge

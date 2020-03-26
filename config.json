@@ -8,9 +8,13 @@
     "https": {
         "enabled": "-> $.HTTPS_ENABLED || false",
         "port": "-> $.HTTPS_PORT || 443",
+        "letsEncrypt": {
+            "live": "-> $.HTTPS_LE_LIVE",
+            "ca": "-> $.HTTPS_LE_CA"
+        },
         "options": {
-            "key": "-> $.HTTPS_KEY || '/data/privkey.pem'",
-            "cert": "-> $.HTTPS_CERT || '/data/cert.pem'",
+            "key": "-> $.HTTPS_KEY",
+            "cert": "-> $.HTTPS_CERT",
             "ca": "-> $.HTTPS_CA",
             "requestCert": "-> $.HTTPS_REQUEST_CERT",
             "rejectUnauthorized": "-> $.HTTPS_REJECT_UNAUTHORIZED"

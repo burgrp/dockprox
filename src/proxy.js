@@ -86,6 +86,39 @@ module.exports = async config => {
                 pc.options[key] = pc.options[key] && await fsPro.readFile(pc.options[key]);
             }
 
+            if (pc.letsEncrypt && pc.letsEncrypt.live) {
+
+                async function tryCa(name) {
+                    if (pc.letsEncrypt.ca) {
+                        try {
+                            return await fsPro.readFile(`${pc.letsEncrypt.ca}/${name}.pem`);
+                        } catch (e) {
+                            if (e.code !== "ENOENT") {
+                                throw e;
+                            }
+                        }
+                    }
+                }
+
+                let ctxs = (await Promise.all(
+                    (await fsPro.readdir(pc.letsEncrypt.live, { withFileTypes: true }))
+                        .filter(f => f.isDirectory())
+                        .map(async f => ({
+                            name: f.name,
+                            ctx: tls.createSecureContext({
+                                cert: await fsPro.readFile(`${pc.letsEncrypt.live}/${f.name}/fullchain.pem`),
+                                key: await fsPro.readFile(`${pc.letsEncrypt.live}/${f.name}/privkey.pem`),
+                                ca: await tryCa(f.name)
+                            })
+                        }))
+                )).sort((a, b) => reverseStr(b.name).localeCompare(reverseStr(a.name)));
+
+                pc.options.SNICallback = (servername, cb) => {
+                    let ctx = (ctxs.find(({name}) => servername === name || servername.endsWith("." + name)) || {}).ctx;
+                    cb(null, ctx);
+                }
+            }
+
             var server = require(protocol).createServer(pc.options, (req, res) => {
                 try {
 
