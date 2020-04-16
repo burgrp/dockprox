@@ -34,7 +34,7 @@ module.exports = async config => {
     }
 
     function getTarget(req) {
-        let requestedHost = req.headers.host.split(":")[0];
+        let requestedHost = req.socket.servername || req.headers.host.split(":")[0];
 
         let target = virtualHostMapping.find(m => {
             let mh = m.front.host;
@@ -63,17 +63,26 @@ module.exports = async config => {
         let pc = config[protocol];
 
         function checkRequestHeaders(req) {
+
             let clientCert = (req.socket.getPeerCertificate && req.socket.getPeerCertificate()) || {};
 
-            let result = [
-                ...Object.entries(req.headers).filter(([k, v]) => !k.startsWith("tcc-")),
-                ["tcc-fingerprint-sha1", clientCert.fingerprint],
-                ["tcc-fingerprint-sha256", clientCert.fingerprint256],
-                ["tcc-serial-number", clientCert.serialNumber],
-                ["tcc-valid-from", clientCert.valid_from],
-                ["tcc-valid-to", clientCert.valid_to],
+            let proxyHeaders = {
+                ["tls-servername"]: req.socket.servername,
+                ["tcc-fingerprint-sha1"]: clientCert.fingerprint,
+                ["tcc-fingerprint-sha256"]: clientCert.fingerprint256,
+                ["tcc-serial-number"]: clientCert.serialNumber,
+                ["tcc-valid-from"]: clientCert.valid_from,
+                ["tcc-valid-to"]: clientCert.valid_to,
                 ...Object.entries(clientCert.subject || {}).reduce((acc, [k, v]) => ([...acc, ["tcc-subject-" + k.toLowerCase(), v]]), [])
-            ].reduce((acc, [k, v]) => (v === undefined ? acc : { ...acc, [k]: v }), {});
+            };
+
+            let result = { ...req.headers };
+            Object.entries(proxyHeaders).forEach(([k, v]) => {
+                delete result[k]; 
+                if (v) {
+                    result[k] = v;
+                }
+            });
 
             return result;
         }
@@ -114,7 +123,7 @@ module.exports = async config => {
                 )).sort((a, b) => reverseStr(b.name).localeCompare(reverseStr(a.name)));
 
                 pc.options.SNICallback = (servername, cb) => {
-                    let ctx = (ctxs.find(({name}) => servername === name || servername.endsWith("." + name)) || {}).ctx;
+                    let ctx = (ctxs.find(({ name }) => servername === name || servername.endsWith("." + name)) || {}).ctx;
                     cb(null, ctx);
                 }
             }
