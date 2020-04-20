@@ -51,7 +51,7 @@ module.exports = async config => {
                             host: vhost
                         },
                         back: {
-                            host: config.remapToLocalhost ? "localhost" : Object.values(c.data.NetworkSettings.Networks)[0].IPAddress,
+                            host: config.remapToLocalhost ? "localhost" : c.data.NetworkSettings.Networks[config.networkName].IPAddress,
                             port,
                             path
                         },

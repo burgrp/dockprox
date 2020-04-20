@@ -24,6 +24,7 @@
         "module": "./docker.js",
         "socket": "-> $.DOCKER_SOCKET || '/var/run/docker.sock'",
         "domain": "-> $DOMAIN",
-        "remapToLocalhost": "-> $.REMAP_TO_LOCALHOST"
+        "remapToLocalhost": "-> $.REMAP_TO_LOCALHOST",
+        "networkName": "-> $NETWORK_NAME"
     }
 }
