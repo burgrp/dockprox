@@ -158,12 +158,6 @@ module.exports = async config => {
                             headers: checkRequestHeaders(req),
                         }, targetRes => {
                             res.writeHead(targetRes.statusCode, targetRes.statusMessage, targetRes.headers);
-
-                            // ugly hack: flush the head in case of docker wait call
-                            if (req.url.endsWith("/wait?condition=removed")) {
-                                res.write("\n");
-                            }
-
                             targetRes.pipe(res);
                         });
 
