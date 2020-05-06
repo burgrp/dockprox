@@ -158,6 +158,8 @@ module.exports = async config => {
                             headers: checkRequestHeaders(req),
                         }, targetRes => {
                             res.writeHead(targetRes.statusCode, targetRes.statusMessage, targetRes.headers);
+                            res.write("");
+                            res.uncork();            
                             targetRes.pipe(res);
                         });
 
@@ -212,10 +214,11 @@ module.exports = async config => {
                             `HTTP/${targetRes.httpVersion} ${targetRes.statusCode} ${targetRes.statusMessage}\n` +
                             Object.entries(targetRes.headers).map(([k, v]) => `${k}: ${v}\n`).join("") +
                             "\n"
-                        );
-
-                        socket.pipe(targetSocket).pipe(socket);
-
+                            , () => {
+                                socket.uncork();
+                                socket.pipe(targetSocket).pipe(socket);
+                            });       
+        
                     });
 
                     targetReq.end(head);
