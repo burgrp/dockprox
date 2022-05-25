@@ -4,8 +4,7 @@ HTTP/HTTPS proxy driven by Docker labels
 
 build and push:
 ```
-docker build -t burgrp/dockprox .
-docker push burgrp/dockprox
+docker buildx build --platform linux/amd64,linux/arm64 --push --tag burgrp/dockprox . 
 ```
 
 test run:

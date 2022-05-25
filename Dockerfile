@@ -1,8 +1,9 @@
-FROM node:12.16.3-alpine
+FROM node:16-alpine
 
 WORKDIR /app
 COPY package.json package-lock.json config.json ./
 COPY src ./src
+RUN ln -s /usr/local/bin /usr/local/sbin
 RUN npm install
 
 EXPOSE 80/tcp
